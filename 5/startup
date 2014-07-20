@@ -1,0 +1,4 @@
+while(true) do
+	shell.run("reactor_control.lua")
+	sleep(5)
+end

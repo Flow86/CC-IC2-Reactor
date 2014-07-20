@@ -1,0 +1,4 @@
+while(true) do
+	shell.run("reactor_mfsu_sensor.lua")
+	sleep(5)
+end

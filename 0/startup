@@ -1,0 +1,8 @@
+while(true) do
+	if not shell.run("reactor_resupply.lua") then
+		redstone.setOutput("front", false)
+		break
+	end
+	redstone.setOutput("front", false)
+	sleep(5)
+end
