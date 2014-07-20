@@ -1,0 +1,119 @@
+-------------------------------------------------------------------------------
+-- rednetutils
+-------------------------------------------------------------------------------
+
+if not os.loadAPI("common/apis/tableutils") then
+	print("Cannot load tableutils")
+	return false
+end
+
+-- set all rednet targets allowed to send to
+local localRednetName = ""
+local allowedRednetTargets = {}
+local rednetTargets = {}
+
+local modemSide = nil
+
+-------------------------------------------------------------------------------
+-- rednetutils.initialize
+--
+--
+-------------------------------------------------------------------------------
+function initialize(side)
+	if side ~= nil then 
+		modemSide = side
+	else
+		for _,side in pairs({ "top", "bottom", "left", "right", "front", "back" }) do
+			if peripheral.isPresent(side) then
+				if peripheral.getType(side) == "modem" then
+					modemSide = side
+				end
+			end
+		end
+	end
+	
+	if modemSide == nil then
+		return false
+	end
+	if not peripheral.isPresent(modemSide) then
+		return false
+	end
+	if peripheral.getType(modemSide) ~= "modem" then
+		return false
+	end
+	
+	rednet.open(modemSide)
+	
+	return true
+end
+
+-------------------------------------------------------------------------------
+-- rednetutils.deinitialize
+--
+--
+-------------------------------------------------------------------------------
+function deinitialize()
+	rednet.close()
+end
+
+-------------------------------------------------------------------------------
+-- rednetutils.register
+--
+--
+-------------------------------------------------------------------------------
+function register(name, targets)
+	if name ~= nil then
+		localRednetName = name
+	end
+	
+	if target ~= nil then
+		for _, target in ipairs(targets) do
+			if tableutil.contains(allowedRednetTargets, target) == nil then
+				table.insert(allowedRednetTargets, target)
+			end
+		end
+	end
+end
+
+-------------------------------------------------------------------------------
+-- rednetutils.sendCommand
+--
+--
+-------------------------------------------------------------------------------
+function sendCommand(cmd, data)
+	local msg = textutils.serialize({cmd = cmd, type = localRednetName, data = data})
+	if #allowedRednetTargets == 0 then
+		rednet.broadcast(msg)
+	else
+		for _,t in pairs(allowedRednetTargets) do
+			rednet.send(t, msg)
+		end
+	end
+end
+
+-------------------------------------------------------------------------------
+-- rednetutils.processEvent
+--
+--
+-------------------------------------------------------------------------------
+function processEvent(from, message)
+	if from == os.getComputerID() then
+		return nil
+	end
+
+	local event = textutils.unserialize(message)
+
+	if tableutils.contains(allowedRednetTargets, event.type) and not tableutils.contains(rednetTargets, from) then
+		table.insert(rednetTargets, from)
+	end
+
+	if tableutils.contains(rednetTargets, from) then
+		return event
+	end
+	
+	return nil
+end
+
+-------------------------------------------------------------------------------
+-- EOF
+-------------------------------------------------------------------------------

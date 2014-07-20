@@ -1,0 +1,50 @@
+-------------------------------------------------------------------------------
+-- sensor-test
+-------------------------------------------------------------------------------
+
+if not os.loadAPI("common/apis/tableutils") then
+	print("Cannot load tableutils")
+	return false
+end
+
+if not os.loadAPI("ocs/apis/sensor") then
+	print("Cannot load sensor api")
+	return false
+end
+
+term.clear()
+
+filehandle = fs.open("sensor-test.txt", "w")
+
+for k,side in pairs({ "top", "bottom", "left", "right", "front", "back" }) do
+	if peripheral.isPresent(side) and peripheral.getType(side) == "sensor" then
+		prox = sensor.wrap(side)
+		
+		filehandle.writeLine("Found Sensor peripheral at side \""..side.."\": ")
+		filehandle.writeLine("Available Methods: "..tableutils.pretty_print(peripheral.getMethods(side), "\n                   "))
+		
+		if prox.getSensorName ~= nil then
+			filehandle.writeLine("Sensor Name: "..prox.getSensorName())
+		end
+		
+		if prox.getTargets() ~= nil then
+			filehandle.writeLine("Available Targets: "..tableutils.pretty_print(prox.getTargets(), "\n                   "))
+			filehandle.writeLine("")
+			if prox.getTargetDetails ~= nil then
+				filehandle.writeLine("Target Info: ")
+				for block,info in pairs(prox.getTargets()) do
+					filehandle.writeLine("  ['"..block.."']:")
+					filehandle.writeLine("    "..tableutils.pretty_print(prox.getTargetDetails(block), "\n    "))
+				end
+			end
+		end
+	end
+end
+
+filehandle.close()
+
+print("Sensor info written to sensor-test.txt")
+
+-------------------------------------------------------------------------------
+-- EOF
+-------------------------------------------------------------------------------

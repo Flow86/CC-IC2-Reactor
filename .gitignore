@@ -1,0 +1,3 @@
+*.bak
+/lastid.txt
+*/common/

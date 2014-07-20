@@ -1,0 +1,110 @@
+-------------------------------------------------------------------------------
+-- tableutils
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
+-- tableutils.contains
+--
+--
+-------------------------------------------------------------------------------
+function contains(t, item)
+	for i,e in pairs(t) do
+		if e == item then
+			return i
+		end
+	end
+	return nil
+end
+
+-------------------------------------------------------------------------------
+-- tableutils.copy
+--
+--
+-------------------------------------------------------------------------------
+function copy(t, deep, seen)
+	deep = deep or true
+	seen = seen or {}
+	if t == nil then return nil end
+	if seen[t] then return seen[t] end
+	
+	local nt = {}
+	for k, v in pairs(t) do
+		if deep and type(v) == 'table' then
+			nt[k] = copy(v, deep, seen)
+		else
+			nt[k] = v
+		end
+	end
+	setmetatable(nt, copy(getmetatable(t), deep, seen))
+	seen[t] = nt
+	return nt
+end
+
+-------------------------------------------------------------------------------
+-- tableutils.pretty_print
+--
+--
+-------------------------------------------------------------------------------
+function pretty_print(table, newline, indent, recursion)
+  text = ""
+  indent = indent or 0;
+  newline = newline or ""
+  
+  if type(table) ~= 'table' then
+  	if (type(table) == 'string') then
+      text = text..string.rep('  ', indent).."'"..table.."',"..newline
+    else
+      text = text..string.rep('  ', indent)..tostring(table)..","..newline
+    end
+    return text
+  end
+
+  local keys = {};
+
+  for k in pairs(table) do
+    keys[#keys+1] = k;
+  end
+
+  if recursion == nil then
+    text = text..string.rep('  ', indent)..'{'..newline
+  else
+    text = text..'{'..newline
+  end
+  
+  indent = indent + 1;
+  for k, v in pairs(table) do
+
+    local key = k;
+    if (type(key) == 'string') then
+      if not (string.match(key, '^[A-Za-z_][0-9A-Za-z_]*$')) then
+        key = "['"..key.."']";
+      end
+    elseif (type(key) == 'number') then
+      key = "["..key.."]";
+    end
+
+    if (type(v) == 'table') then
+      if (next(v)) then
+        text = text..string.rep('  ', indent)..tostring(key).." = "
+        text = text..pretty_print(v, newline, indent, true)..","..newline;
+      else
+        text = text.. string.rep('  ', indent)..tostring(key).." = {},"..newline
+      end 
+    elseif (type(v) == 'string') then
+      text = text..string.rep('  ', indent)..tostring(key).." = '"..v.."',"..newline
+    elseif v == nil then
+      text = text..string.rep('  ', indent)..tostring(key).." = nil,"..newline
+    else
+      text = text..string.rep('  ', indent)..tostring(key).." = "..tostring(v)..","..newline
+    end
+  end
+  indent = indent - 1;
+  text = text..string.rep('  ', indent)..'}' 
+  --..newline
+  
+  return text
+end
+
+-------------------------------------------------------------------------------
+-- EOF
+-------------------------------------------------------------------------------

@@ -1,0 +1,95 @@
+-------------------------------------------------------------------------------
+-- inventory
+-------------------------------------------------------------------------------
+
+local inventorySide = nil
+local inventoryProxy = nil
+
+-------------------------------------------------------------------------------
+-- inventory.initialize
+--
+--
+-------------------------------------------------------------------------------
+function initialize(side)
+	if side ~= nil then 
+		inventorySide = side
+	else
+		for _,side in pairs({ "top", "bottom", "left", "right", "front", "back" }) do
+			if peripheral.isPresent(side) then
+				if peripheral.getType(side) == "inventory" then
+					inventorySide = side
+				end
+			end
+		end
+	end
+	
+	if inventorySide == nil then
+		return false
+	end
+	if not peripheral.isPresent(inventorySide) then
+		return false
+	end
+	if peripheral.getType(inventorySide) ~= "inventory" then
+		return false
+	end
+	
+	inventoryProxy = peripheral.wrap(inventorySide)
+	
+	return true
+end
+
+-------------------------------------------------------------------------------
+-- inventory.deinitialize
+--
+--
+-------------------------------------------------------------------------------
+function deinitialize(side)
+	inventoryProxy = nil
+end
+
+-------------------------------------------------------------------------------
+-- inventory.getSlotCount
+--
+--
+-------------------------------------------------------------------------------
+function getSlotCount(side)
+	if inventoryProxy == nil then
+		return nil
+	end
+
+	if side == "top" then
+		return inventoryProxy.getSlotCountUp()
+	elseif side == "bottom" then
+		return inventoryProxy.getSlotCountDown()
+	elseif side == nil or side == "front" then
+		return inventoryProxy.getSlotCount()
+	end
+	
+	return nil
+end
+
+
+-------------------------------------------------------------------------------
+-- inventory.getItem
+--
+--
+-------------------------------------------------------------------------------
+function getItem(slot, side)
+	if inventoryProxy == nil then
+		return nil
+	end
+
+	if side == "top" then
+		return inventoryProxy.getItemUp(slot)
+	elseif side == "bottom" then
+		return inventoryProxy.getItemDown(slot)
+	elseif side == nil or side == "front" then
+		return inventoryProxy.getItem(slot)
+	end
+	
+	return nil
+end
+
+-------------------------------------------------------------------------------
+-- EOF
+-------------------------------------------------------------------------------
