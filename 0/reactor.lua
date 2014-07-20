@@ -124,18 +124,20 @@ local function initialize()
 		},
 
 		['reactor'] = {
-			['side'] = "top",
-			['status'] = "STOPPED",
-			['command'] = "OFF", 
+			['side']           = "top",
+			['status']         = "STOPPED",
+			['command']        = "OFF", 
 			['security_lever'] = "OFF",
-			['size'] = 0,
+			['size']           = 0,
 		},
 		
 		['cooling'] = {
-			['name'] = "ic2.reactorcondensatorlap",
-			['blocks'] = {},
-			['replaced'] = 0,
-			['refresh'] = false,
+			['name']      = "ic2.reactorcondensatorlap",
+			['blocks']    = {},
+			['replenish'] = "front",
+			['drop']      = turtle.dropDown,
+			['replaced']  = 0,
+			['refresh']   = false,
 		},
 	
 		['gui'] = {
@@ -143,13 +145,15 @@ local function initialize()
 		},
 		
 		['redstone'] = {
-			["top"] = redstone.getInput("top"),
-			["front"] = redstone.getInput("front"),
-			["left"] = redstone.getInput("left"),
-			["right"] = redstone.getInput("right"),
-			["back"] = redstone.getInput("back"),
+			["top"]    = redstone.getInput("top"),
+			["front"]  = redstone.getInput("front"),
+			["left"]   = redstone.getInput("left"),
+			["right"]  = redstone.getInput("right"),
+			["back"]   = redstone.getInput("back"),
 			["bottom"] = redstone.getInput("bottom"),
 		},
+		
+		['rednet'] = true,
 	}
 	
 	config['reactor']['security_lever'] = config['redstone'][config['lever']['side']] and "ON" or "OFF"
@@ -172,6 +176,145 @@ local function initialize()
 		return false
 	end
 	print("DONE")
+	
+	return true
+end
+
+-------------------------------------------------------------------------------
+--
+-------------------------------------------------------------------------------
+local function dropOld(slotNr)
+	if turtle.getItemCount(slotNr) > 0 then
+		turtle.select(slotNr)
+		while not config['cooling']['drop']() do
+			stop()
+			term.clearLine(1)
+			print("Old condensator chest is full, waiting...")
+			sleep(1)
+		end
+	end
+end
+
+-------------------------------------------------------------------------------
+--
+-------------------------------------------------------------------------------
+local function replenishCondensator(slotNr)
+	if turtle.getItemCount(slotNr) < 1 then
+		turtle.select(slotNr)
+	
+		local found = false
+		repeat
+			for slotNr = 1, inventory.getSlotCount(config['cooling']['replenish']) do
+				local replenishSlot = inventory.getItem(slotNr, config['cooling']['replenish'])
+				if replenishSlot then
+					if replenishSlot['RawName'] == config['cooling']['name'] then
+						if inventory.suck(slotNr, replenishSlot['Size'], config['cooling']['replenish']) then
+							found = true
+						end
+					end
+				end
+			end
+			if not found then
+				stop()
+				term.clearLine(1)
+				print("New condensator chest is empty, waiting...")
+				sleep(1)
+			end
+		until found
+	end
+end
+
+-------------------------------------------------------------------------------
+--
+-------------------------------------------------------------------------------
+local function replenishCondensators()
+	for slotNr = 1, 8 do
+		replenishCondensator(slotNr)
+	end
+end
+
+-------------------------------------------------------------------------------
+--
+-------------------------------------------------------------------------------
+local function placeCondensator(slotNr)
+	while true do
+		for i = 1, 8 do
+			if turtle.getItemCount(i) > 0 then
+				turtle.select(i)
+				inventory.drop(slotNr, 1, config['reactor']['side'])
+				return
+			end
+		end
+		replenishCondensator(1)
+	end
+end
+
+-------------------------------------------------------------------------------
+--
+-------------------------------------------------------------------------------
+local function loopCooling()
+	print("Starting cooling system...")
+	while true do
+		local needToReplace = config['cooling']['refresh']
+
+		-- check each condensator slot if empty or damage <= 1000
+		for _, slotNr in ipairs(config['cooling']['blocks']) do
+			local damage = condensatorState(slotNr) or 0
+			if damage <= 1000 then
+				needToReplace = true
+				break
+			end
+		end
+		
+		if needToReplace then
+			config['rednet'] = false
+			
+			stop()
+			while config['reactor']['status'] == "RUNNING" do
+				sleep(2)
+			end
+			
+			local turtleSlot = 9
+			for _, slotNr in ipairs(config['cooling']['blocks']) do
+				local damage = condensatorState(slotNr)
+				
+				if (config['cooling']['refresh'] and damage < 10000) or damage <= 2000 then
+
+					turtle.select(turtleSlot)
+					inventory.suck(slotNr, 1, config['reactor']['side'])
+
+					placeCondensator(slotNr)
+					
+					config['cooling']['replaced'] = config['cooling']['replaced'] + 1
+
+					turtleSlot = turtleSlot + 1
+					if turtleSlot == 17 then
+						for i = 9, 16 do
+							dropOld(i)
+						end
+						replenishCondensators()
+						turtleSlot = 9
+					end
+				end
+			end
+
+			for i = 9, 16 do
+				dropOld(i)
+			end
+			
+			config['cooling']['refresh'] = false
+
+			if config['reactor']['command'] == "ON" then
+				start()
+			end
+			config['rednet'] = true
+		else
+			replenishCondensators()
+		end
+		
+		turtle.select(1)
+		sleep(1)
+	end
 	
 	return true
 end
@@ -209,8 +352,10 @@ local function loopRedstone()
 				print("Start Signal... Security Lever is on")
 				start()
 			end
-		end		
+		end
 	end
+	
+	return true
 end
 
 -------------------------------------------------------------------------------
@@ -220,6 +365,7 @@ local function processKeyEvent(key)
 	key = string.lower(key)
 	
 	if key == "q" then
+		error("Stopped")
 		return false
 	
 	elseif key == "x" then
@@ -235,7 +381,7 @@ local function processKeyEvent(key)
 			config['reactor']['command'] = "ON"
 		end
 
-		if config['reactor']['command'] == "ON" then
+		if config['rednet'] and config['reactor']['command'] == "ON" then
 			start()
 		else
 			stop()
@@ -265,7 +411,7 @@ local function loopEvents()
 
 				elseif msg.cmd == "control" then
 					config['reactor']['command'] = msg.data
-					if config['reactor']['command'] == "ON" then
+					if config['rednet'] and config['reactor']['command'] == "ON" then
 						start()
 					else
 						stop()
@@ -274,6 +420,8 @@ local function loopEvents()
 			end
 		end
 	end
+	
+	return true
 end
 
 -------------------------------------------------------------------------------
@@ -305,6 +453,8 @@ local function loopMenu()
 		
 		rednetutils.sendCommand("reactorinfo", config['reactor'])
 	end
+	
+	return true
 end
 
 -------------------------------------------------------------------------------
@@ -318,8 +468,7 @@ local function main()
 		return false
 	end
 	
-    -- doCooling
-	parallel.waitForAny(loopRedstone, loopEvents, loopMenu)
+	rtn = parallel.waitForAny(loopRedstone, loopEvents, loopCooling, loopMenu)
 	
 	stop()
 	
@@ -334,7 +483,7 @@ if not rtn then
 	print("Reactor Program failed: " .. error)
 end
 
-print("Exiting...")
+return rtn
 
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------

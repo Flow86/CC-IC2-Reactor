@@ -68,7 +68,6 @@ function getSlotCount(side)
 	return nil
 end
 
-
 -------------------------------------------------------------------------------
 -- inventory.getItem
 --
@@ -85,6 +84,48 @@ function getItem(slot, side)
 		return inventoryProxy.getItemDown(slot)
 	elseif side == nil or side == "front" then
 		return inventoryProxy.getItem(slot)
+	end
+	
+	return nil
+end
+
+-------------------------------------------------------------------------------
+-- inventory.suck
+--
+--
+-------------------------------------------------------------------------------
+function suck(slot, amount, side)
+	if inventoryProxy == nil then
+		return nil
+	end
+
+	if side == "top" then
+		return inventoryProxy.suckUp(slot, amount)
+	elseif side == "bottom" then
+		return inventoryProxy.suckDown(slot, amount)
+	elseif side == nil or side == "front" then
+		return inventoryProxy.suck(slot, amount)
+	end
+	
+	return nil
+end
+
+-------------------------------------------------------------------------------
+-- inventory.drop
+--
+--
+-------------------------------------------------------------------------------
+function drop(slot, amount, side)
+	if inventoryProxy == nil then
+		return nil
+	end
+
+	if side == "top" then
+		return inventoryProxy.dropUp(slot, amount)
+	elseif side == "bottom" then
+		return inventoryProxy.dropDown(slot, amount)
+	elseif side == nil or side == "front" then
+		return inventoryProxy.drop(slot, amount)
 	end
 	
 	return nil

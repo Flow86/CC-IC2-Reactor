@@ -11,7 +11,7 @@ term.clear()
 
 filehandle = fs.open("peripheral-test.txt", "w")
 
-for k,side in pairs({ "top", "bottom", "left", "right", "front", "back" }) do
+for _,side in pairs({ "top", "bottom", "left", "right", "front", "back" }) do
 	if peripheral.isPresent(side) then
 		filehandle.writeLine("Side: \""..side.."\" has peripheral \""..peripheral.getType(side).."\":");
 		filehandle.writeLine("Available Methods: "..tableutils.pretty_print(peripheral.getMethods(side), "\n                   "))

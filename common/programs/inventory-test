@@ -1,0 +1,44 @@
+-------------------------------------------------------------------------------
+-- inventory-test
+-------------------------------------------------------------------------------
+
+if not os.loadAPI("common/apis/tableutils") then
+	print("Cannot load tableutils")
+	return false
+end
+
+term.clear()
+
+filehandle = fs.open("inventory-test.txt", "w")
+
+for _,side in pairs({ "top", "bottom", "left", "right", "front", "back" }) do
+	if peripheral.isPresent(side) and peripheral.getType(side) == "inventory" then
+		
+		filehandle.writeLine("Found Inventory peripheral at side \""..side.."\": ")
+		filehandle.writeLine("Available Methods: "..tableutils.pretty_print(peripheral.getMethods(side), "\n                   "))
+		
+		prox = peripheral.wrap(side)
+
+		for _, where in pairs({ "Top", "Bottom", "Front" }) do
+			getSlotCount = prox.getSlotCount
+			getItem = prox.getItem
+			if where == "Top" then
+				getSlotCount = prox.getSlotCountUp
+			elseif where == "Bottom" then
+				getSlotCount = prox.getSlotCountDown
+			end
+			
+			items = {}
+			for i = 1,getSlotCount() do
+				items[i] = getItem(i)
+			end
+			filehandle.writeLine(where..":")
+			filehandle.writeLine("  SlotCount: "..getSlotCount())
+			filehandle.writeLine("  Items: "..tableutils.pretty_print(items, "\n        "))
+		end
+	end
+end
+
+filehandle.close()
+
+print("Inventory info written to inventory.txt")
