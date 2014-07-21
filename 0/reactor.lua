@@ -27,7 +27,7 @@ end
 -------------------------------------------------------------------------------
 
 if rednetutils.initialize() == nil then
-	print "Unable to find modem"
+	print("Unable to find modem")
 	return false
 end
 
@@ -124,7 +124,7 @@ local function initialize()
 		},
 
 		['reactor'] = {
-			['side']           = "top",
+			['side']           = "front",
 			['status']         = "STOPPED",
 			['command']        = "OFF", 
 			['security_lever'] = "OFF",
@@ -134,7 +134,7 @@ local function initialize()
 		['cooling'] = {
 			['name']      = "ic2.reactorcondensatorlap",
 			['blocks']    = {},
-			['replenish'] = "front",
+			['replenish'] = "top",
 			['drop']      = turtle.dropDown,
 			['replaced']  = 0,
 			['refresh']   = false,
@@ -407,7 +407,7 @@ local function loopEvents()
 			local msg = rednetutils.processEvent(param, message)
 			if msg ~= nil then
 				if msg.cmd == "announce" then
-					rednetSend("reactorinfo", config['reactor']['info'])
+					rednetutils.sendCommand("info", config['reactor'])
 
 				elseif msg.cmd == "control" then
 					config['reactor']['command'] = msg.data
@@ -451,7 +451,7 @@ local function loopMenu()
 		term.clearLine(1)
 		print("Q to exit, S to toggle, R to redraw")
 		
-		rednetutils.sendCommand("reactorinfo", config['reactor'])
+		rednetutils.sendCommand("info", config['reactor'])
 	end
 	
 	return true
@@ -485,7 +485,6 @@ end
 
 return rtn
 
--------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 -- EOF
 -------------------------------------------------------------------------------

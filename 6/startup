@@ -1,0 +1,6 @@
+while(true) do
+	if not shell.run("reactor_tempsensor.lua") then
+		break
+	end
+	sleep(5)
+end
