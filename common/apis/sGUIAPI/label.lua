@@ -8,15 +8,14 @@ v0.1a
 Label = { }
 Label.__index = Label
 
-function Label:new(text, position, textColor, bgColor, callback)
+function Label:new(text, position, textColor, bgColor, callback, visible)
   return setmetatable({
     text = text,
     position = position,
     textColor = textColor or 0,
     bgColor = bgColor or 0,
-    visible = true,
-    active = false,
-    callback = callback
+    callback = callback,
+    visible = visible or true,
   }, Label)
 end
 

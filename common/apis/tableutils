@@ -23,12 +23,22 @@ end
 -------------------------------------------------------------------------------
 function join(a, b, overwrite_only)
 	local c = {}
-	for k,v in pairs(a) do
-		c[k] = v
-	end
+	
+	--if type(a) == "table" then
+		for k,v in pairs(a) do
+			c[k] = v
+		end
+	--else
+	--	return nil
+	--end
+	
 	for k,v in pairs(b) do
 		if not overwrite_only or a[k] ~= nil then
-			c[k] = v
+			if type(c[k]) == 'table' and type(v) == 'table' then
+				c[k] = join(c[k], v)
+			else
+				c[k] = v
+			end
 		end
 	end
 

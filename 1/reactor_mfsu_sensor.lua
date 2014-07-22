@@ -115,7 +115,7 @@ local function doSensors()
 		lastEnergyEmitted = energyEmitted
 		lastTimestamp = timestamp
 
-		rednetSend("sensordata", sensordata)
+		rednetSend("info", sensordata)
 		lastsensordata = sensordata
 	
 		sleep(5.0)

@@ -67,9 +67,9 @@ function register(name, targets)
 		localRednetName = name
 	end
 	
-	if target ~= nil then
-		for _, target in ipairs(targets) do
-			if tableutil.contains(allowedRednetTargets, target) == nil then
+	if targets ~= nil then
+		for _, target in pairs(targets) do
+			if tableutils.contains(allowedRednetTargets, target) == nil then
 				table.insert(allowedRednetTargets, target)
 			end
 		end
@@ -86,7 +86,7 @@ function sendCommand(cmd, data)
 	if #allowedRednetTargets == 0 then
 		rednet.broadcast(msg)
 	else
-		for _,t in pairs(allowedRednetTargets) do
+		for _,t in pairs(rednetTargets) do
 			rednet.send(t, msg)
 		end
 	end
@@ -103,9 +103,14 @@ function processEvent(from, message)
 	end
 
 	local event = textutils.unserialize(message)
+	--print("Event: "..tableutils.pretty_print(event))
+	--print("Allowed:"..tableutils.contains(allowedRednetTargets, event.type))
 
 	if tableutils.contains(allowedRednetTargets, event.type) and not tableutils.contains(rednetTargets, from) then
 		table.insert(rednetTargets, from)
+	end
+	
+	if typeOfTarget[from] == nil then
 		typeOfTarget[from] = event.type
 	end
 
@@ -122,10 +127,7 @@ end
 --
 -------------------------------------------------------------------------------
 function getTypeOfTarget(id)
-	if tableutils.contains(typeOfTarget, id) then
-		return typeOfTarget[id]
-	end
-	return nil
+	return typeOfTarget[id]
 end
 
 -------------------------------------------------------------------------------

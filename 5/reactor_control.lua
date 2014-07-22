@@ -6,7 +6,7 @@
 --
 ---------------------------------------------------------------------------------
 
-dofile("common/api/sGUIAPI/sGUIAPI.lua")
+dofile("common/apis/sGUIAPI/sGUIAPI.lua")
 
 if not os.loadAPI("common/apis/tableutils") then
 	print("Cannot load tableutils")
@@ -78,7 +78,7 @@ local function initialize()
 		['rednet'] = true,
 		
 		['mfsu'] = {
-			['store'] = 0,
+			['stored'] = 0,
 			['capacity'] = 0,
 			['chargeRate'] = 0,
 			['dischargeRate'] = 0,
@@ -157,24 +157,28 @@ local function initialize()
 		gui.ruleVertical          = Rule:new(Rule.VERTICAL,        Rectangle:new(displayM, 11, 1,  displayH-10), colors.gray)
 		
 		gui.labelReactor          = Label:new("Reactor",           Rectangle:new( 1, 12, displayM, 1), colors.white, colors.black)
-		gui.labelUraniumCells     = Label:new("Uranium Cells:",    Rectangle:new( 3, 14,       15, 1), colors.white, colors.black)
-		gui.labelUraniumCellsC    = Label:new("         0",        Rectangle:new(19, 14,       10, 1), colors.white, colors.gray)
-		gui.buttonUraniumCells    = Button:new("ERR",              Rectangle:new(30, 14,        5, 1), colors.white, colors.red)
-		gui.labelLapislazuli      = Label:new("Lapislazuli:",      Rectangle:new( 3, 15,       15, 1), colors.white, colors.black)
-		gui.labelLapislazuliC     = Label:new("         0",        Rectangle:new(19, 15,       10, 1), colors.white, colors.gray)
-		gui.buttonLapislazuli     = Button:new("ERR",              Rectangle:new(30, 15,        5, 1), colors.white, colors.red)
+		--gui.labelUraniumCells     = Label:new("Uranium Cells:",    Rectangle:new( 3, 14,       15, 1), colors.white, colors.black)
+		--gui.labelUraniumCellsC    = Label:new("         0",        Rectangle:new(19, 14,       10, 1), colors.white, colors.gray)
+		--gui.buttonUraniumCells    = Button:new("ERR",              Rectangle:new(30, 14,        5, 1), colors.white, colors.red)
+		--gui.labelLapislazuli      = Label:new("Lapislazuli:",      Rectangle:new( 3, 15,       15, 1), colors.white, colors.black)
+		--gui.labelLapislazuliC     = Label:new("         0",        Rectangle:new(19, 15,       10, 1), colors.white, colors.gray)
+		--gui.buttonLapislazuli     = Button:new("ERR",              Rectangle:new(30, 15,        5, 1), colors.white, colors.red)
 		gui.labelReactorHeat      = Label:new("Heat:",             Rectangle:new( 3, 17,       15, 1), colors.white, colors.black)
 		gui.labelReactorHeatC     = Label:new("         0",        Rectangle:new(19, 17,       10, 1), colors.white, colors.gray)
-		gui.buttonReactorHeat     = Button:new("ERR",              Rectangle:new(30, 17,        5, 1), colors.white, colors.red)
+		gui.buttonReactorHeat     = Button:new("N/A",              Rectangle:new(30, 17,        5, 1), colors.white, colors.red)
 		gui.labelReactorOutput    = Label:new("Output (Eu/t):",    Rectangle:new( 3, 18,       15, 1), colors.white, colors.black)
 		gui.labelReactorOutputC   = Label:new("         0",        Rectangle:new(19, 18,       10, 1), colors.white, colors.gray)
-		gui.buttonOutput          = Button:new("ERR",              Rectangle:new(30, 18,        5, 1), colors.white, colors.red)
+		gui.buttonReactorOutput   = Button:new("N/A",              Rectangle:new(30, 18,        5, 1), colors.white, colors.red)
 		
 		gui.labelReactorState     = Label:new("State:",            Rectangle:new( 3, 20,       15, 1), colors.white, colors.black)
-		gui.labelReactorStateC    = Label:new(" Stopped  ",        Rectangle:new(19, 20,       10, 1), colors.white, colors.gray)
+		gui.labelReactorStateC    = Label:new(" Stopped ",         Rectangle:new(19, 20,        9, 1), colors.white, colors.gray)
+		gui.buttonReactorReset    = Button:new("Reset",            Rectangle:new(30, 20,        5, 1), colors.red,   colors.gray,  clickedButtonReactorReset, false)
 		
-		gui.buttonReactorOn       = Button:new("On",               Rectangle:new(12, 23,        6, 3), colors.white, colors.green, clickedButtonReactorOn)
-		gui.buttonReactorOff      = Button:new("Off",              Rectangle:new(19, 23,        7, 3), colors.white, colors.red,   clickedButtonReactorOff)
+		gui.buttonReactorEmergency = Button:new({"Reactor", "Emergency", "Off"},   Rectangle:new( 5, 23,       11, 3), colors.red,   colors.gray,  clickedButtonReactorEmergency)
+		gui.buttonReactorOn        = Button:new("On",                              Rectangle:new(17, 23,        6, 3), colors.white, colors.green, clickedButtonReactorOn)
+		gui.buttonReactorOff       = Button:new("Off",                             Rectangle:new(24, 23,        7, 3), colors.white, colors.red,   clickedButtonReactorOff)
+		
+		gui.labelReactorEmergency = Button:new("!! EMERGENCY SYSTEM ACTIVATED !!", Rectangle:new(3, 23,       32, 3), colors.white, colors.red, nil, false)
 		
 --		gui.labelBreeder          = Label:new("Breeder",           Rectangle:new(displayM +  1, 12, displayM, 1), colors.white, colors.black)
 --		gui.labelDepletedCells    = Label:new("Depleted Cells:",   Rectangle:new(displayM +  3, 14,       15, 1), colors.white, colors.black)
@@ -194,12 +198,14 @@ local function initialize()
 		
 		config.gui.controls = gui
 		
-		-- todo: charge/discharge rate, in/outputs, reactor control, reactor inventories (lzh, lapislazuli), breeder
+		-- todo: charge/discharge rate, in/outputs, reactor inventories (lzh, lapislazuli), breeder
 
 		for _, child in pairs(gui) do
 			config.gui.display:addChild(child)
 		end
 	end
+	
+	rednetutils.sendCommand("announce")
 	
 	return true
 end
@@ -216,10 +222,10 @@ local function setButton(button, onoff, onlabel, offlabel)
 	end
 	
 	if onoff then
-		button.label = onlabel
+		button:setLabel(onlabel)
 		button.buttonColor = colors.green
 	else
-		button.label = offlabel
+		button:setLabel(offlabel)
 		button.buttonColor = colors.red
 	end
 end
@@ -228,15 +234,15 @@ end
 --
 -------------------------------------------------------------------------------
 local function toggleButton(button)
-	if button.label == "Off" then
-		button.label = "On"
+	if button:getLabel() == "Off" then
+		button:setLabel("On")
 		button.buttonColor = colors.green
 	else
-		button.label = "Off"
+		button:setLabel("Off")
 		button.buttonColor = colors.red
 	end
 	
-	return (button.label ~= "Off")
+	return (button.getLabel() ~= "Off")
 end
 
 -------------------------------------------------------------------------------
@@ -273,22 +279,32 @@ local function updateGui()
 	--setButton(gui.buttonLapislazuli, (lastsensordata.reactor.lapislazuli > 0), "OK", "ERR")
 
 	gui.labelReactorHeatC.text = string.format("%10d", config.reactor.heat)
-	setButton(gui.buttonReactorHeat, (lastsensordata.reactor.heat == 0), "OK ", "ERR")
+	setButton(gui.buttonReactorHeat, (config.reactor.heat <= 0.1), "OK ", "ERR")
 
 	gui.labelReactorOutputC.text = string.format("%10d", config.reactor.output)
-	setButton(gui.buttonReactorOutput, (lastsensordata.reactor.output > 0), "OK", "ERR")
+	setButton(gui.buttonReactorOutput, (config.reactor.output > 0.1), "OK ", "ERR")
 	
-	if config.reactor.state == "STOPPED" then
-		gui.labelReactorStateC.text = " Stopped  "
+	gui.buttonReactorReset.visible = false
+	gui.buttonReactorEmergency.visible = true
+	gui.labelReactorEmergency.visible = false
+	gui.buttonReactorOn.visible = true
+	gui.buttonReactorOff.visible = true
+	if config.reactor.status == "STOPPED" then
+		gui.labelReactorStateC.text = " Stopped "
 		gui.labelReactorStateC.bgColor = colors.gray
-	elseif config.reactor.state == "ERROR" then
-		gui.labelReactorStateC.text = "  ERROR   "
+	elseif config.reactor.status == "ERROR" then
+		gui.labelReactorStateC.text = "EMERGENCY"
 		gui.labelReactorStateC.bgColor = colors.red
-	elseif config.reactor.state == "RUNNING" then
-		gui.labelReactorStateC.text = " Running  "
+		gui.buttonReactorReset.visible = true
+		gui.buttonReactorEmergency.visible = false
+		gui.labelReactorEmergency.visible = true
+		gui.buttonReactorOn.visible = false
+		gui.buttonReactorOff.visible = false
+	elseif config.reactor.status == "RUNNING" then
+		gui.labelReactorStateC.text = " Running "
 		gui.labelReactorStateC.bgColor = colors.green
 	else
-		gui.labelReactorStateC.text = " UNKNOWN  "
+		gui.labelReactorStateC.text = " UNKNOWN "
 		gui.labelReactorStateC.bgColor = colors.red
 	end
 
@@ -353,19 +369,30 @@ local function loopEvents()
 				break
 			end
 			
-		elseif event == "rednet_message":
+		elseif event == "rednet_message" then
 			local msg = rednetutils.processEvent(param, message)
 			if msg ~= nil then
 				if msg.cmd == "announce" then
 					rednetutils.sendCommand("heartbeat")
 				elseif msg.cmd == "info" then
 					if msg.type == "reactor" then
+						if config.reactor.status == "ERROR" then
+							msg.data.status = nil
+						end
 						config.reactor = tableutils.join(config.reactor, msg.data, true)
+						--print("R: "..tableutils.pretty_print(config.reactor))
 					elseif msg.type == "reactor_sensor" then
+						if msg.data.status == "RUNNING" then
+							msg.data.status = nil
+						end
 						config.reactor = tableutils.join(config.reactor, msg.data, true)
+						--print("S: "..tableutils.pretty_print(config.reactor))
 					elseif msg.type == "reactor_refiller" then
 						config.reactor = tableutils.join(config.reactor, msg.data, true)
 					elseif msg.type == "mfsu_sensor" then
+						if config.mfsu.sensors[param] == nil then
+							config.mfsu.sensors[param] = {}
+						end
 						config.mfsu.sensors[param] = tableutils.join(config.mfsu.sensors[param], msg.data)
 						accumulateMFSUInfo()
 					end
@@ -375,9 +402,6 @@ local function loopEvents()
 		
 		config.gui.display:interceptEvent(event, param, message, p3, p4, p5)
 	end
-	
-	term.clear()
-	config.gui.display:clear()
 end
 
 -------------------------------------------------------------------------------
@@ -385,7 +409,7 @@ end
 -------------------------------------------------------------------------------
 local function loopMenu()
 	print("Menu loop starting ...")
-	term.clear()
+	-- term.clear()
 
 	while true do
 		updateGui()
@@ -418,7 +442,7 @@ local function loopMenu()
 		term.clearLine()
 		io.write("  Listener: ")
 		for _,i in pairs(rednetutils.getListeners()) do
-			io.write(i.." ("..rednetutils.getTypeOfTarget(i)..")")
+			io.write(i.." ("..rednetutils.getTypeOfTarget(i)..") ")
 		end
 		print("")
 		
@@ -444,6 +468,9 @@ local function main()
 	
 	rtn = parallel.waitForAny(loopEvents, loopMenu)
 	
+	-- clickedButtonReactorOff()
+
+	term.clear()
 	config.gui.display:clear()
 	
 	return rtn

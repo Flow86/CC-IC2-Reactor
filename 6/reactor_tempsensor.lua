@@ -172,7 +172,7 @@ local function loopEvents()
 		elseif event == "rednet_message" then
 			local msg = rednetutils.processEvent(param, message)
 			if msg ~= nil then
-				if msg.cmd == "announce" then
+				if msg.cmd == "announce" or msg.cmd == "heartbeat" then
 					rednetutils.sendCommand("info", config['reactor'])
 					
 				elseif msg.cmd == "control" and config['rednet'] == true then
