@@ -81,12 +81,15 @@ end
 local function initialize()
 	-- todo: read basic config from file?
 
-	rednetutils.register("reactor", { "reactor_control" })
+	rednetutils.register("reactor_refiller", { "reactor_control" })
 
 	config = {
 		['reactor'] = {
 			['side']           = "front",
 			['size']           = 0,
+			['replaced'] = {
+				['cells'] = 0,
+			}
 		},
 		
 		['refill'] = {
@@ -94,7 +97,6 @@ local function initialize()
 			['blocks']    = {},
 			['replenish'] = "top",
 			['drop']      = turtle.dropDown,
-			['replaced']  = 0,
 			['refresh']   = false,
 		},
 	
@@ -228,7 +230,7 @@ local function loopRefill()
 
 				placeFuelRod(slotNr)
 					
-				config['refill']['replaced'] = config['refill']['replaced'] + 1
+				config['reactor']['replaced']['cells'] = config['reactor']['replaced']['cells'] + 1
 
 				turtleSlot = turtleSlot + 1
 				if turtleSlot == 17 then
@@ -315,7 +317,7 @@ local function loopMenu()
 		term.setCursorPos(1,1)
 		
 		term.clearLine(1)
-		print(string.format("Fuel Rods Replaced: %5s", config['refill']['replaced']))
+		print(string.format("Fuel Rods Replaced: %5s", config['reactor']['replaced']['cells']))
 
 		drawFuelRodState()
 

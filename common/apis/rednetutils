@@ -11,6 +11,7 @@ end
 local localRednetName = ""
 local allowedRednetTargets = {}
 local rednetTargets = {}
+local typeOfTarget = {}
 
 local modemSide = nil
 
@@ -105,6 +106,7 @@ function processEvent(from, message)
 
 	if tableutils.contains(allowedRednetTargets, event.type) and not tableutils.contains(rednetTargets, from) then
 		table.insert(rednetTargets, from)
+		typeOfTarget[from] = event.type
 	end
 
 	if tableutils.contains(rednetTargets, from) then
@@ -112,6 +114,27 @@ function processEvent(from, message)
 	end
 	
 	return nil
+end
+
+-------------------------------------------------------------------------------
+-- rednetutils.getTypeOfTarget
+--
+--
+-------------------------------------------------------------------------------
+function getTypeOfTarget(id)
+	if tableutils.contains(typeOfTarget, id) then
+		return typeOfTarget[id]
+	end
+	return nil
+end
+
+-------------------------------------------------------------------------------
+-- rednetutils.getListeners
+--
+--
+-------------------------------------------------------------------------------
+function getListeners()
+	return rednetTargets
 end
 
 -------------------------------------------------------------------------------

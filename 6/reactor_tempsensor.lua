@@ -176,9 +176,9 @@ local function loopEvents()
 					rednetutils.sendCommand("info", config['reactor'])
 					
 				elseif msg.cmd == "control" and config['rednet'] == true then
-					if msg.data == "reset" then
+					if msg.data == "RESET" then
 						running()
-					elseif msg.data == "emergency" then
+					elseif msg.data == "EMERGENCY" then
 						emergency()
 					end
 				end

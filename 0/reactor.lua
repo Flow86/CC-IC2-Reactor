@@ -129,6 +129,9 @@ local function initialize()
 			['command']        = "OFF", 
 			['security_lever'] = "OFF",
 			['size']           = 0,
+			['replaced'] = {
+				['condensators'] = 0,
+			}
 		},
 		
 		['cooling'] = {
@@ -136,7 +139,6 @@ local function initialize()
 			['blocks']    = {},
 			['replenish'] = "top",
 			['drop']      = turtle.dropDown,
-			['replaced']  = 0,
 			['refresh']   = false,
 		},
 	
@@ -285,7 +287,7 @@ local function loopCooling()
 
 					placeCondensator(slotNr)
 					
-					config['cooling']['replaced'] = config['cooling']['replaced'] + 1
+					config['reactor']['replaced']['condensators'] = config['reactor']['replaced']['condensators'] + 1
 
 					turtleSlot = turtleSlot + 1
 					if turtleSlot == 17 then
@@ -410,10 +412,14 @@ local function loopEvents()
 					rednetutils.sendCommand("info", config['reactor'])
 
 				elseif msg.cmd == "control" then
-					config['reactor']['command'] = msg.data
-					if config['rednet'] and config['reactor']['command'] == "ON" then
-						start()
-					else
+					if msg.data == "ON" or msg.data == "OFF" then
+						config['reactor']['command'] = msg.data
+						if config['rednet'] and config['reactor']['command'] == "ON" then
+							start()
+						else
+							stop()
+						end
+					elseif msg.data == "EMERGENCY" then
 						stop()
 					end
 				end
@@ -444,7 +450,7 @@ local function loopMenu()
 		term.clearLine(1)
 		print(string.format("Lever: %3s, Reactor: %s/%s", config['reactor']['security_lever'], config['reactor']['command'], config['reactor']['status']))
 		term.clearLine(1)
-		print(string.format("Condensators Replaced: %5s", config['cooling']['replaced']))
+		print(string.format("Condensators Replaced: %5s", config['reactor']['replaced']['condensators']))
 
 		drawCondensatorState()
 
