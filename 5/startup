@@ -1,4 +1,6 @@
 while(true) do
-	shell.run("reactor_control.lua")
+	if not shell.run("common/programs/reactor/reactor_control.lua") then
+		break
+	end
 	sleep(5)
 end

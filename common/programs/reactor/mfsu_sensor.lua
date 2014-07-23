@@ -1,18 +1,21 @@
 -------------------------------------------------------------------------------
 --
--- Reactor Cell Refiller
+-- Reactor Resupply and Control Script
 --
 -- needs Turtle with Inventory Module and Wireless Modem.
 --
+--
+-- reactor design from: http://www.youtube.com/watch?v=sy7rtCq6Z0A
+--
 ---------------------------------------------------------------------------------
-
-if not os.loadAPI("common/apis/tableutils") then
-	print("Cannot load tableutils")
-	return false
-end
 
 if not os.loadAPI("common/apis/rednetutils") then
 	print("Cannot load rednetutils")
+	return false
+end
+
+if not os.loadAPI("ocs/apis/sensor") then
+	print("Cannot load sensor api")
 	return false
 end
 
@@ -28,7 +31,7 @@ sensor = nil
 for _,side in pairs({ "top", "bottom", "left", "right", "front", "back" }) do
 	if peripheral.isPresent(side) and peripheral.getType(side) == "sensor" then
 		sensor = peripheral.wrap(side)
-		if sensor.getSensorName() ~= "machineCard" then
+		if sensor.getSensorName() ~= "powerCard" then
 			sensor = nil
 		else
 			break
@@ -37,7 +40,7 @@ for _,side in pairs({ "top", "bottom", "left", "right", "front", "back" }) do
 end
 
 if not sensor then
-	print("Unable to find machine sensor module")
+	print("Unable to find power sensor module")
 	return false
 end
 
@@ -49,25 +52,20 @@ local config = {}
 local function initialize()
 	-- todo: read basic config from file?
 
-	rednetutils.register("reactor_sensor", { "reactor_control", "reactor" })
+	rednetutils.register("mfsu_sensor", { "reactor_control" })
 
 	config = {
-		['lever'] = {
-			['side']      = "back",
-		},
-	
-		['reactor'] = {
-			['side']        = "0,0,2",
-			['maxpercent']  = 85,
-			['maxdamage']   = 1000, -- tbc
-			['status']      = "UNKNOWN",
-
-			['heat']        = 0,
-			['maxheat']     = 0,
-			['heatpercent'] = 0,
-			['active']      = false,
-			['output']      = 0,
-			['damage']      = 0,
+		['mfsu'] = {
+			['stored']        = 0,
+			['capacity']      = 0,
+			['chargeRate']    = 0,
+			['dischargeRate'] = 0,
+			['limits'] = {
+				['x'] = { -1, 1 },
+				['y'] = { -5, 5 },
+				['z'] = { -3, 3 },
+			},
+			['blocks'] = {},
 		},
 	
 		['gui'] = {
@@ -77,56 +75,72 @@ local function initialize()
 		['rednet'] = true,
 	}
 	
+	-- find all mfsu's around
+	for block,info in pairs(sensor.getTargets()) do
+		if info.RawName == "ic2.mfsu" and 
+		   info.Position.X <= config.mfsu.limits.x[0] and info.Position.X >= config.mfsu.limits.x[1] and
+		   info.Position.Z <= config.mfsu.limits.z[0] and info.Position.Z >= config.mfsu.limits.z[1] and
+		   info.Position.Y <= config.mfsu.limits.y[0] and info.Position.Y >= config.mfsu.limits.y[1] then
+			table.insert(config.mfsu.blocks, block)
+		end
+	end
+	
 	return true
 end
-
--------------------------------------------------------------------------------
---
--------------------------------------------------------------------------------
-local function emergency()
-	redstone.setOutput(config['lever']['side'], false)
-	config['reactor']['status'] = "ERROR"
-end
-
--------------------------------------------------------------------------------
---
--------------------------------------------------------------------------------
-local function running()
-	redstone.setOutput(config['lever']['side'], true)
-	config['reactor']['status'] = "RUNNING"
-end
-
 -------------------------------------------------------------------------------
 --
 -------------------------------------------------------------------------------
 local function loopStatus()
 	print("Starting status system...")
+
+	local lastEnergySunken = 0
+	local lastEnergyEmitted = 0
+	local lastTimestamp = os.time()
+
 	while true do
-		local reactor = sensor.getTargetDetails(config['reactor']['side'])
-		if reactor == nil then
-			emergency()
-		else
-			config['reactor']['heat'] = reactor['Heat']
-			config['reactor']['maxheat'] = reactor['MaxHeat']
-			config['reactor']['heatpercent'] = reactor['HeatPercentage']
-			config['reactor']['active'] = reactor['Active']
-			config['reactor']['output'] = reactor['Output'] * 10 -- output seems to be wrong :/
-			config['reactor']['damage'] = reactor['DamageValue']
+		local timestamp = os.time()
+		
+		local timedifference = math.floor(timestamp - lastTimestamp)
+		if timedifference == 0 then
+			timedifference = 1
+		end
+		
+		local energySunken = 0
+		local energyEmitted = 0
+
+		local mfsu = tableutils.copy(config.mfsu)
+		mfsu.stored = 0
+		mfsu.capacity = 0
+		
+		-- remove unneeded info
+		mfsu.limits = nil
+		mfsu.blocks = nil
+	
+		for i=1,#config.mfsu.blocks do
+			local detail = sensor.getTargetDetails(config.mfsu.blocks[i])
+			if detail ~= nil then
+				energySunken = energySunken + detail['EnergySunken']
+				energyEmitted = energyEmitted + detail['EnergyEmitted']
 			
-			if config['reactor']['heatpercent'] >= config['reactor']['maxpercent'] then
-				emergency()
-			end
-			if config['reactor']['damage'] >= config['reactor']['maxdamage'] then
-				emergency()
-			end
-			
-			-- initialize first time
-			if config['reactor']['status'] == "UNKNOWN" then
-				running()
+				mfsu.stored = mfsu.stored + detail['Stored']
+				mfsu.capacity = mfsu.capacity + detail['Capacity']
 			end
 		end
 
-		sleep(1)
+		local chargedifference = (energySunken - lastEnergySunken)
+		local dischargedifference = (energyEmitted - lastEnergyEmitted)
+
+		mfsu.chargeRate = (chargedifference / timedifference) / 100
+		mfsu.dischargeRate = (dischargedifference / timedifference) / 100
+
+		lastEnergySunken = energySunken
+		lastEnergyEmitted = energyEmitted
+		lastTimestamp = timestamp
+
+		rednetSend("info", mfsu)
+		config.mfsu = tableutils.join(config.mfsu, mfsu)
+		
+		sleep(5)
 	end
 	
 	return true
@@ -139,15 +153,8 @@ local function processKeyEvent(key)
 	key = string.lower(key)
 	
 	if key == "q" then
-		emergency()
 		error("Stopped")
 		return false
-	
-	elseif key == "s" then
-		running()
-
-	elseif key == "e" then
-		emergency()
 	
 	elseif key == "r" then
 		config['gui']['refresh'] = true
@@ -173,14 +180,7 @@ local function loopEvents()
 			local msg = rednetutils.processEvent(param, message)
 			if msg ~= nil then
 				if msg.cmd == "announce" or msg.cmd == "heartbeat" then
-					rednetutils.sendCommand("info", config['reactor'])
-					
-				elseif msg.cmd == "control" and config['rednet'] == true then
-					if msg.data == "RESET" then
-						running()
-					elseif msg.data == "EMERGENCY" then
-						emergency()
-					end
+					rednetutils.sendCommand("info", config['mfsu'])
 				end
 			end
 		end
@@ -199,49 +199,42 @@ local function loopMenu()
 
 	rednetutils.sendCommand("announce")
 	while true do
-		sleep(1)
 		if config['gui']['refresh'] == true then
 			config['gui']['refresh'] = false
 			term.clear()
 		end
 		term.setCursorPos(1,1)
 		
-		term.clearLine(1)
-		print("Reactor Status:  "..(config['reactor']['active'] and "ON" or "OFF"))
-
-		term.clearLine(1)
+		term.clearLine()
+		print(string.format("Reactor MFSU Sensorsystem      (ID %03d)", os.getComputerID()))
+		term.clearLine()
 		print("")
-
-		term.clearLine(1)
-		print("Temperature: "..string.format("%5d  of %5d", config['reactor']['heat'], config['reactor']['maxheat']))
-		print("             "..string.format("%5d%% of %5d%%", config['reactor']['heatpercent'], config['reactor']['maxpercent']))
-		term.clearLine(1)
-		print("Damage:      "..string.format("%5d  of %5d", config['reactor']['damage'], config['reactor']['maxdamage']))
-		term.clearLine(1)
-		print("Output:   "..string.format("%8d  Eu/t", config['reactor']['output']))
 		
-		term.clearLine(1)
+		term.clearLine()
+		print(string.format("MFSU Overall:   %d", #config.mfsu.blocks))
+		term.clearLine()
+		print(string.format("  Stored:              %10d kEu", config.mfsu.stored / 1000))
+		term.clearLine()
+		print(string.format("  Capacity:            %10d kEu", config.mfsu.capacity / 1000))
+		term.clearLine()
+		print(string.format("  Percent:             %10d %% ", (config.mfsu.stored / config.mfsu.capacity) * 100.0))
+		term.clearLine()
 		print("")
 
-		term.clearLine(1)
-		if config['reactor']['status'] == "ERROR" then
-			print("  !!! EMERGENCY SYSTEM ACTIVATED !!!")
-			term.clearLine(1)
-			print("        Press S to clear error")
-		else
-			print("")
-		end
-
-		term.clearLine(1)
+		term.clearLine()
+		print(string.format("  Charge:              %10d Eu/t", config.mfsu.chargeRate))
+		term.clearLine()
+		print(string.format("  Discharge:           %10d Eu/t", config.mfsu.dischargeRate))
+		term.clearLine()
 		print("")
-
-		term.clearLine(1)
-		print("Q to exit, R to redraw")
 		
-		rednetutils.sendCommand("info", config['reactor'])
+		term.clearLine()
+		print("")
+		term.clearLine()
+		print("Q to exit")
+
+		sleep(1)
 	end
-	
-	return true
 end
 
 -------------------------------------------------------------------------------
@@ -257,8 +250,6 @@ local function main()
 	
 	rtn = parallel.waitForAny(loopEvents, loopStatus, loopMenu)
 	
-	emergency()
-	
 	return rtn
 end
 
@@ -267,7 +258,7 @@ end
 local rtn, error = pcall(main)
 
 if not rtn then
-	print("Reactor Refill Program failed: " .. error)
+	print("MFSU Sensor Program failed: " .. error)
 end
 
 return rtn

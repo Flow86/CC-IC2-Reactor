@@ -1,4 +1,6 @@
 while(true) do
-	shell.run("reactor_mfsu_sensor.lua")
+	if not shell.run("common/programs/reactor/mfsu_sensor.lua") then
+		break
+	end
 	sleep(5)
 end
