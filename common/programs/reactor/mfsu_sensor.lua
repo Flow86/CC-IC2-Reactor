@@ -61,9 +61,9 @@ local function initialize()
 			['chargeRate']    = 0,
 			['dischargeRate'] = 0,
 			['limits'] = {
-				['x'] = { -1, 1 },
-				['y'] = { -5, 5 },
-				['z'] = { -3, 3 },
+				['x'] = { 1, -1 },
+				['y'] = { 5, -5 },
+				['z'] = { 3, -3 },
 			},
 			['blocks'] = {},
 		},
@@ -77,10 +77,12 @@ local function initialize()
 	
 	-- find all mfsu's around
 	for block,info in pairs(sensor.getTargets()) do
+		-- print(tableutils.pretty_print(info, "\n"))
+		-- print(tableutils.pretty_print(config.mfsu, "\n"))
 		if info.RawName == "ic2.mfsu" and 
-		   info.Position.X <= config.mfsu.limits.x[0] and info.Position.X >= config.mfsu.limits.x[1] and
-		   info.Position.Z <= config.mfsu.limits.z[0] and info.Position.Z >= config.mfsu.limits.z[1] and
-		   info.Position.Y <= config.mfsu.limits.y[0] and info.Position.Y >= config.mfsu.limits.y[1] then
+			info.Position.X <= config.mfsu.limits.x[1] and info.Position.X >= config.mfsu.limits.x[2] and
+			info.Position.Z <= config.mfsu.limits.z[1] and info.Position.Z >= config.mfsu.limits.z[2] and
+			info.Position.Y <= config.mfsu.limits.y[1] and info.Position.Y >= config.mfsu.limits.y[2] then
 			table.insert(config.mfsu.blocks, block)
 		end
 	end
@@ -137,7 +139,7 @@ local function loopStatus()
 		lastEnergyEmitted = energyEmitted
 		lastTimestamp = timestamp
 
-		rednetSend("info", mfsu)
+		rednetutils.sendCommand("info", mfsu)
 		config.mfsu = tableutils.join(config.mfsu, mfsu)
 		
 		sleep(5)
@@ -198,6 +200,8 @@ local function loopMenu()
 	config['gui']['refresh'] = true
 
 	rednetutils.sendCommand("announce")
+	
+	sleep(1)
 	while true do
 		if config['gui']['refresh'] == true then
 			config['gui']['refresh'] = false

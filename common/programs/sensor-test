@@ -18,7 +18,7 @@ filehandle = fs.open("sensor-test.txt", "w")
 
 for _,side in pairs({ "top", "bottom", "left", "right", "front", "back" }) do
 	if peripheral.isPresent(side) and peripheral.getType(side) == "sensor" then
-		prox = sensor.wrap(side)
+		prox = peripheral.wrap(side)
 		
 		filehandle.writeLine("Found Sensor peripheral at side \""..side.."\": ")
 		filehandle.writeLine("Available Methods: "..tableutils.pretty_print(peripheral.getMethods(side), "\n                   "))
