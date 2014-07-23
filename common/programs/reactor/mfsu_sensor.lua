@@ -1,8 +1,8 @@
 -------------------------------------------------------------------------------
 --
--- Reactor Resupply and Control Script
+-- MFSU Sensor Script
 --
--- needs Turtle with Inventory Module and Wireless Modem.
+-- needs Turtle with Sensor Module and Wireless Modem.
 --
 --
 -- reactor design from: http://www.youtube.com/watch?v=sy7rtCq6Z0A
