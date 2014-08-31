@@ -58,8 +58,8 @@ local function initialize()
 	
 		['reactor'] = {
 			['side']        = "0,0,2",
-			['maxpercent']  = 85,
-			['maxdamage']   = 1000, -- tbc
+			['maxpercent']  = 10, -- explodes very fast (step / tick approx >20%!)
+			['maxdamage']   = 10, -- tbc
 			['status']      = "UNKNOWN",
 
 			['heat']        = 0,

@@ -65,7 +65,7 @@ end
 local function initialize()
 	-- todo: read basic config from file?
 
-	rednetutils.register("reactor_control", { "mfsu_sensor", "reactor", "reactor_sensor", "reactor_refiller" })
+	rednetutils.register("reactor_control", { "mfsu_sensor", "reactor", "reactor_sensor", "reactor_refiller", "lapislazuli_creator" })
 
 	config = {
 		['gui'] = {
@@ -83,6 +83,7 @@ local function initialize()
 			['chargeRate'] = 0,
 			['dischargeRate'] = 0,
 			['percent'] = 0,
+			['maxpercent'] = 98, -- shutdown limit
 			
 			['sensors'] = {}, -- listener list (computer ids)
 		},
@@ -395,6 +396,10 @@ local function loopEvents()
 						end
 						config.mfsu.sensors[param] = tableutils.join(config.mfsu.sensors[param], msg.data)
 						accumulateMFSUInfo()
+						
+						if config.mfsu.percent >= config.mfsu.maxpercent then
+							clickedButtonReactorOff()
+						end
 					end
 				end
 			end
@@ -409,11 +414,14 @@ end
 -------------------------------------------------------------------------------
 local function loopMenu()
 	print("Menu loop starting ...")
-	-- term.clear()
 
 	while true do
 		updateGui()
 		
+		if config['gui']['refresh'] == true then
+			config['gui']['refresh'] = false
+			term.clear()
+		end
 		term.setCursorPos(1,1)
 		
 		term.clearLine()

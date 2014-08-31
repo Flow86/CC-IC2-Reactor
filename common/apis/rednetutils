@@ -83,7 +83,7 @@ end
 -------------------------------------------------------------------------------
 function sendCommand(cmd, data)
 	local msg = textutils.serialize({cmd = cmd, type = localRednetName, data = data})
-	if #allowedRednetTargets == 0 then
+	if #rednetTargets == 0 then
 		rednet.broadcast(msg)
 	else
 		for _,t in pairs(rednetTargets) do
@@ -103,8 +103,8 @@ function processEvent(from, message)
 	end
 
 	local event = textutils.unserialize(message)
-	--print("Event: "..tableutils.pretty_print(event))
-	--print("Allowed:"..tableutils.contains(allowedRednetTargets, event.type))
+	-- print("Event: "..tableutils.pretty_print(event))
+	-- print("Allowed:"..tableutils.contains(allowedRednetTargets, event.type))
 
 	if tableutils.contains(allowedRednetTargets, event.type) and not tableutils.contains(rednetTargets, from) then
 		table.insert(rednetTargets, from)

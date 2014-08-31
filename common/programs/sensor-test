@@ -22,10 +22,12 @@ for _,side in pairs({ "top", "bottom", "left", "right", "front", "back" }) do
 		
 		filehandle.writeLine("Found Sensor peripheral at side \""..side.."\": ")
 		filehandle.writeLine("Available Methods: "..tableutils.pretty_print(peripheral.getMethods(side), "\n                   "))
+		filehandle.writeLine("Available Methods: "..tableutils.pretty_print(prox.getSensorMethods(), "\n                   "))
 		
-		if prox.getSensorName ~= nil then
-			filehandle.writeLine("Sensor Name: "..prox.getSensorName())
-		end
+		-- seems to block
+		-- if prox.getSensorName ~= nil then
+		-- 	filehandle.writeLine("Sensor Name: "..prox.getSensorName())
+		-- end
 		
 		if prox.getTargets() ~= nil then
 			filehandle.writeLine("Available Targets: "..tableutils.pretty_print(prox.getTargets(), "\n                   "))

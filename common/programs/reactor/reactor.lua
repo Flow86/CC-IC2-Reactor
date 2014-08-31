@@ -116,7 +116,7 @@ end
 local function initialize()
 	-- todo: read basic config from file?
 
-	rednetutils.register("reactor", { "reactor_control" })
+	rednetutils.register("reactor", { "reactor_control", "lapislazuli_creator" })
 
 	config = {
 		['lever'] = {

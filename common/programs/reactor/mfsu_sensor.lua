@@ -102,7 +102,7 @@ local function loopStatus()
 	while true do
 		local timestamp = os.time()
 		
-		local timedifference = math.floor(timestamp - lastTimestamp)
+		local timedifference = math.floor(timestamp / 0.02 - lastTimestamp / 0.02)
 		if timedifference == 0 then
 			timedifference = 1
 		end
