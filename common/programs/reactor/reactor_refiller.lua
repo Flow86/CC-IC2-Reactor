@@ -199,12 +199,23 @@ local function placeFuelRod(slotNr)
 		for i = 1, 8 do
 			if turtle.getItemCount(i) > 0 then
 				turtle.select(i)
-				inventory.drop(slotNr, 1, config['reactor']['side'])
-				return
+				if inventory.drop(slotNr, 1, config['reactor']['side']) then
+					return true
+				end
+				-- blacklist
+				print("Blacklist Slot"..slotNr)
+				for k, s in ipairs(config.refill.blocks) do
+					if s == slotNr then
+						table.remove(config.refill.blocks, k)
+						break
+					end
+				end
+				return false
 			end
 		end
 		replenishFuelRod(1)
 	end
+	return nil -- never reached
 end
 
 -------------------------------------------------------------------------------
@@ -228,9 +239,9 @@ local function loopRefill()
 				turtle.select(turtleSlot)
 				inventory.suck(slotNr, 1, config['reactor']['side'])
 
-				placeFuelRod(slotNr)
-					
-				config['reactor']['replaced']['cells'] = config['reactor']['replaced']['cells'] + 1
+				if placeFuelRod(slotNr) then
+					config['reactor']['replaced']['cells'] = config['reactor']['replaced']['cells'] + 1
+				end
 
 				turtleSlot = turtleSlot + 1
 				if turtleSlot == 17 then
