@@ -30,12 +30,23 @@ if rednetutils.initialize() == nil then
 end
 
 local config = {}
+local settings_file = string.format("control_%03d.properties", os.getComputerID())
+
+-------------------------------------------------------------------------------
+--
+-------------------------------------------------------------------------------
+local function write_settings(t)
+	file = fs.open(settings_file, "w")
+	file.write(t)
+	file.close()
+end
 
 -------------------------------------------------------------------------------
 --
 -------------------------------------------------------------------------------
 local function clickedButtonReactorOn()
 	rednetutils.sendCommand("control", "ON")
+	config.gui.refresh = true
 end
 
 -------------------------------------------------------------------------------
@@ -43,6 +54,7 @@ end
 -------------------------------------------------------------------------------
 local function clickedButtonReactorOff()
 	rednetutils.sendCommand("control", "OFF")
+	config.gui.refresh = true
 end
 
 -------------------------------------------------------------------------------
@@ -50,6 +62,7 @@ end
 -------------------------------------------------------------------------------
 local function clickedButtonReactorReset()
 	rednetutils.sendCommand("control", "RESET")
+	config.gui.refresh = true
 end
 
 -------------------------------------------------------------------------------
@@ -57,6 +70,7 @@ end
 -------------------------------------------------------------------------------
 local function clickedButtonReactorEmergency()
 	rednetutils.sendCommand("control", "EMERGENCY")
+	config.gui.refresh = true
 end
 
 -------------------------------------------------------------------------------
@@ -65,7 +79,7 @@ end
 local function initialize()
 	-- todo: read basic config from file?
 
-	rednetutils.register("reactor_control", { "mfsu_sensor", "reactor", "reactor_sensor", "reactor_refiller", "lapislazuli_creator" })
+	rednetutils.register("reactor_control", { "mfsu_sensor", "reactor_sensor", "reactor_refiller", "lapislazuli_creator" })
 
 	config = {
 		['gui'] = {
@@ -77,12 +91,15 @@ local function initialize()
 		
 		['rednet'] = true,
 		
+		['mode'] = "AUTO",
+		
 		['mfsu'] = {
 			['stored'] = 0,
 			['capacity'] = 0,
 			['chargeRate'] = 0,
 			['dischargeRate'] = 0,
 			['percent'] = 0,
+			['minpercent'] = 5,  -- start limit
 			['maxpercent'] = 98, -- shutdown limit
 			
 			['sensors'] = {}, -- listener list (computer ids)
@@ -121,6 +138,17 @@ local function initialize()
 		--	state = 0,
 		--},
 	}
+	
+	if fs.exists(settings_file) then
+		file = fs.open(settings_file, "r")
+		config.reactor.command = file.readAll()
+		file.close()
+		
+		if config.mode ~= "AUTO" then
+			config.mode = "MANUAL"
+		end
+	end
+	
 	
 	-- find monitor side
 	for _,side in pairs({ "top", "bottom", "left", "right", "front", "back" }) do
@@ -167,7 +195,7 @@ local function initialize()
 		gui.labelReactorHeat      = Label:new("Heat:",             Rectangle:new( 3, 17,       15, 1), colors.white, colors.black)
 		gui.labelReactorHeatC     = Label:new("         0",        Rectangle:new(19, 17,       10, 1), colors.white, colors.gray)
 		gui.buttonReactorHeat     = Button:new("N/A",              Rectangle:new(30, 17,        5, 1), colors.white, colors.red)
-		gui.labelReactorOutput    = Label:new("Output (Eu/t):",    Rectangle:new( 3, 18,       15, 1), colors.white, colors.black)
+		gui.labelReactorOutput    = Label:new("Output:",           Rectangle:new( 3, 18,       15, 1), colors.white, colors.black)
 		gui.labelReactorOutputC   = Label:new("         0",        Rectangle:new(19, 18,       10, 1), colors.white, colors.gray)
 		gui.buttonReactorOutput   = Button:new("N/A",              Rectangle:new(30, 18,        5, 1), colors.white, colors.red)
 		
@@ -368,6 +396,14 @@ local function loopEvents()
 		if event == "char" then
 			if string.lower(param) == "q" then
 				break
+				
+			elseif string.lower(param) == "m" then
+				if config.mode == "MANUAL" then
+					config.mode = "AUTO"
+				else
+					config.mode = "MANUAL"
+				end
+				write_settings(config.mode)
 			end
 			
 		elseif event == "rednet_message" then
@@ -376,18 +412,9 @@ local function loopEvents()
 				if msg.cmd == "announce" then
 					rednetutils.sendCommand("heartbeat")
 				elseif msg.cmd == "info" then
-					if msg.type == "reactor" then
-						if config.reactor.status == "ERROR" then
-							msg.data.status = nil
-						end
+					if msg.type == "reactor_sensor" then
 						config.reactor = tableutils.join(config.reactor, msg.data, true)
 						--print("R: "..tableutils.pretty_print(config.reactor))
-					elseif msg.type == "reactor_sensor" then
-						if msg.data.status == "RUNNING" then
-							msg.data.status = nil
-						end
-						config.reactor = tableutils.join(config.reactor, msg.data, true)
-						--print("S: "..tableutils.pretty_print(config.reactor))
 					elseif msg.type == "reactor_refiller" then
 						config.reactor = tableutils.join(config.reactor, msg.data, true)
 					elseif msg.type == "mfsu_sensor" then
@@ -397,8 +424,14 @@ local function loopEvents()
 						config.mfsu.sensors[param] = tableutils.join(config.mfsu.sensors[param], msg.data)
 						accumulateMFSUInfo()
 						
+						-- stop limit
 						if config.mfsu.percent >= config.mfsu.maxpercent then
 							clickedButtonReactorOff()
+						end
+						
+						-- start limit
+						if config.mode == "AUTO" and config.reactor.status == "STOPPED" and config.mfsu.percent < config.mfsu.minpercent then
+							clickedButtonReactorOn()
 						end
 					end
 				end
@@ -426,6 +459,11 @@ local function loopMenu()
 		
 		term.clearLine()
 		print(string.format("Reactor Control                (ID %03d)", os.getComputerID()))
+		term.clearLine()
+		print("")
+
+		term.clearLine()
+		print("Reactor Mode:                     "..config.mode)
 		term.clearLine()
 		print("")
 

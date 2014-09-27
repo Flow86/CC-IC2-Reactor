@@ -42,6 +42,69 @@ if not sensor then
 end
 
 local config = {}
+local settings_file = string.format("reactor_%03d.properties", os.getComputerID())
+
+-------------------------------------------------------------------------------
+--
+-------------------------------------------------------------------------------
+local function start()
+	if redstone.getInput(config['lever']['side']) == false then
+		term.clearLine(1)
+		print("Cannot Start... Security Switch is off")
+		return
+	end
+	
+	if config['reactor']['status'] == "ERROR" then
+		term.clearLine(1)
+		print("Cannot Start... Emergency triggered")
+		return
+	end
+
+	if config['reactor']['status'] ~= "RUNNING" and config['reactor']['command'] == "ON" then
+		config['reactor']['status'] = "RUNNING"
+		term.clearLine(1)
+		print("Starting Reactor...")
+		redstone.setOutput(config['reactor']['side'], true)
+	end
+end
+
+-------------------------------------------------------------------------------
+--
+-------------------------------------------------------------------------------
+local function write_settings(t)
+	file = fs.open(settings_file, "w")
+	file.write(t)
+	file.close()
+end
+
+-------------------------------------------------------------------------------
+--
+-------------------------------------------------------------------------------
+local function stop()
+	if config['reactor']['status'] ~= "STOPPED" then
+		config['reactor']['status'] = "STOPPED"
+		term.clearLine(1)
+		print("Stopping Reactor...")
+	end
+	redstone.setOutput(config['reactor']['side'], false)
+end
+
+-------------------------------------------------------------------------------
+--
+-------------------------------------------------------------------------------
+local function clearError()
+	redstone.setOutput(config['reactor']['side'], false)
+	config['reactor']['status'] = "STOPPED"
+end
+
+-------------------------------------------------------------------------------
+--
+-------------------------------------------------------------------------------
+local function emergency()
+	redstone.setOutput(config['reactor']['side'], false)
+	config['reactor']['status'] = "ERROR"
+	write_settings("ERROR")
+end
 
 -------------------------------------------------------------------------------
 --
@@ -49,7 +112,7 @@ local config = {}
 local function initialize()
 	-- todo: read basic config from file?
 
-	rednetutils.register("reactor_sensor", { "reactor_control", "reactor" })
+	rednetutils.register("reactor_sensor", { "reactor_control" })
 
 	config = {
 		['lever'] = {
@@ -57,10 +120,13 @@ local function initialize()
 		},
 	
 		['reactor'] = {
-			['side']        = "0,0,2",
-			['maxpercent']  = 10, -- explodes very fast (step / tick approx >20%!)
-			['maxdamage']   = 10, -- tbc
-			['status']      = "UNKNOWN",
+			['side']           = "front",
+			['sensor']         = "-3,0,1",
+			['maxpercent']     = 10, -- explodes very fast (step / tick approx >20%!)
+			['maxdamage']      = 10, -- tbc
+			['status']         = "STOPPED",
+			['command']        = "OFF", 
+			['security_lever'] = "OFF",
 
 			['heat']        = 0,
 			['maxheat']     = 0,
@@ -73,27 +139,36 @@ local function initialize()
 		['gui'] = {
 			['refresh'] = true,
 		},
+
+		['redstone'] = {
+			["top"]    = redstone.getInput("top"),
+			["front"]  = redstone.getInput("front"),
+			["left"]   = redstone.getInput("left"),
+			["right"]  = redstone.getInput("right"),
+			["back"]   = redstone.getInput("back"),
+			["bottom"] = redstone.getInput("bottom"),
+		},
 		
 		['rednet'] = true,
 	}
 	
+	config['reactor']['security_lever'] = config['redstone'][config['lever']['side']] and "ON" or "OFF"
+	
+	if fs.exists(settings_file) then
+		file = fs.open(settings_file, "r")
+		config.reactor.command = file.readAll()
+		file.close()
+		
+		if config.reactor.command == "ERROR" then
+			emergency()
+		elseif config.reactor.command == "ON" then
+			start()
+		else
+			stop()
+		end
+	end
+	
 	return true
-end
-
--------------------------------------------------------------------------------
---
--------------------------------------------------------------------------------
-local function emergency()
-	redstone.setOutput(config['lever']['side'], false)
-	config['reactor']['status'] = "ERROR"
-end
-
--------------------------------------------------------------------------------
---
--------------------------------------------------------------------------------
-local function running()
-	redstone.setOutput(config['lever']['side'], true)
-	config['reactor']['status'] = "RUNNING"
 end
 
 -------------------------------------------------------------------------------
@@ -102,7 +177,7 @@ end
 local function loopStatus()
 	print("Starting status system...")
 	while true do
-		local reactor = sensor.getTargetDetails(config['reactor']['side'])
+		local reactor = sensor.getTargetDetails(config['reactor']['sensor'])
 		if reactor == nil then
 			emergency()
 		else
@@ -122,7 +197,7 @@ local function loopStatus()
 			
 			-- initialize first time
 			if config['reactor']['status'] == "UNKNOWN" then
-				running()
+				clearError()
 			end
 		end
 
@@ -144,7 +219,22 @@ local function processKeyEvent(key)
 		return false
 	
 	elseif key == "s" then
-		running()
+		if config['reactor']['status'] == "ERROR" then
+			clearError()
+		else
+			if config['reactor']['command'] == "ON" then
+				config['reactor']['command'] = "OFF"
+			else
+				config['reactor']['command'] = "ON"
+			end
+			write_settings(config.reactor.command)
+		end
+		
+		if config['rednet'] and config['reactor']['command'] == "ON" then
+			start()
+		else
+			stop()
+		end
 
 	elseif key == "e" then
 		emergency()
@@ -176,12 +266,58 @@ local function loopEvents()
 					rednetutils.sendCommand("info", config['reactor'])
 					
 				elseif msg.cmd == "control" and config['rednet'] == true then
-					if msg.data == "RESET" then
-						running()
+					if msg.data == "ON" or msg.data == "OFF" then
+						config['reactor']['command'] = msg.data
+						write_settings(config.reactor.command)
+						if config['rednet'] and config['reactor']['command'] == "ON" then
+							start()
+						else
+							stop()
+						end
+					elseif msg.data == "RESET" then
+						clearError()
 					elseif msg.data == "EMERGENCY" then
 						emergency()
 					end
 				end
+			end
+		end
+	end
+	
+	return true
+end
+-------------------------------------------------------------------------------
+--
+-------------------------------------------------------------------------------
+local function loopRedstone()
+	print("Starting redstone detector...")
+	while true do
+		local event = os.pullEvent("redstone")
+		local changed = {}
+		
+		for side, state in pairs(config['redstone']) do
+			if redstone.getInput(side) ~= state then
+				config['redstone'][side] = redstone.getInput(side)
+				changed[side] = side
+				table.insert(changed, side)
+			end
+		end
+		
+		config['reactor']['security_lever'] = config['redstone'][config['lever']['side']] and "ON" or "OFF"
+		
+		if config['reactor']['status'] == "RUNNING" then
+			if config['redstone'][config['lever']['side']] == false then
+				term.clearLine(1)
+				print("Stop Signal... Security Lever is off")
+				stop()
+			end
+		end
+		
+		if config['reactor']['command'] == "ON" then
+			if config['redstone'][config['lever']['side']] == true and  changed[config['lever']['side']] ~= nil then
+				term.clearLine(1)
+				print("Start Signal... Security Lever is on")
+				start()
 			end
 		end
 	end
@@ -206,7 +342,15 @@ local function loopMenu()
 		term.setCursorPos(1,1)
 		
 		term.clearLine(1)
-		print("Reactor Status:  "..(config['reactor']['active'] and "ON" or "OFF"))
+		print(string.format("Reactor Sensor & Control      (ID %03d)", os.getComputerID()))
+
+		term.clearLine(1)
+		print("")
+
+		term.clearLine(1)
+		print("Reactor Status:  "..config['reactor']['command'].." / "..config['reactor']['status'])
+		term.clearLine(1)
+		print("Security Lever:  "..config['reactor']['security_lever'])
 
 		term.clearLine(1)
 		print("")
@@ -216,11 +360,6 @@ local function loopMenu()
 		print("             "..string.format("%5d%% of %5d%%", config['reactor']['heatpercent'], config['reactor']['maxpercent']))
 		term.clearLine(1)
 		print("Damage:      "..string.format("%5d  of %5d", config['reactor']['damage'], config['reactor']['maxdamage']))
-		term.clearLine(1)
-		print("Output:   "..string.format("%8d  Eu/t", config['reactor']['output']))
-		
-		term.clearLine(1)
-		print("")
 
 		term.clearLine(1)
 		if config['reactor']['status'] == "ERROR" then
@@ -229,13 +368,15 @@ local function loopMenu()
 			print("        Press S to clear error")
 		else
 			print("")
+			term.clearLine(1)
+			print("")
 		end
 
 		term.clearLine(1)
 		print("")
 
 		term.clearLine(1)
-		print("Q to exit, R to redraw")
+		print("Q to exit, S to toggle, R to redraw")
 		
 		rednetutils.sendCommand("info", config['reactor'])
 
@@ -256,7 +397,7 @@ local function main()
 		return false
 	end
 	
-	rtn = parallel.waitForAny(loopEvents, loopStatus, loopMenu)
+	rtn = parallel.waitForAny(loopRedstone, loopEvents, loopStatus, loopMenu)
 	
 	emergency()
 	
@@ -268,7 +409,7 @@ end
 local rtn, error = pcall(main)
 
 if not rtn then
-	print("Reactor Refill Program failed: " .. error)
+	print("Reactor Sensor Program failed: " .. error)
 end
 
 return rtn

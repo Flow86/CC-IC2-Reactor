@@ -40,7 +40,7 @@ local config = {}
 -------------------------------------------------------------------------------
 local function fuelRodState(slotNr)
 	if slotNr then
-		local reactorSlot = inventory.getItem(slotNr, config['reactor']['side'])
+		local reactorSlot = inventory.getItem(slotNr, config['reactor']['sensor'])
 		if reactorSlot then
 			local damage = reactorSlot['DamageValue']
 			
@@ -57,7 +57,9 @@ end
 --
 -------------------------------------------------------------------------------
 local function drawFuelRodState()
-	print("Fuel Rod Durability:")
+	term.clearLine(1)
+	print("Fuel Rod Durability: ("..#config['refill']['blocks'].." Slots)")
+	term.clearLine(1)
 	print("---------------------------------------")
 	
 	percent = 100
@@ -72,6 +74,7 @@ local function drawFuelRodState()
 		term.clearLine(1)
 		print(text.."  |")
 	end
+	term.clearLine(1)
 	print("---------------------------------------")
 end
 
@@ -93,7 +96,7 @@ local function initialize()
 		},
 		
 		['refill'] = {
-			['name']      = "ic2.reactoruraniumquad",
+			['name']      = "ic2.reactoruraniumquad", -- "ic2.reactoruraniumsimple",
 			['blocks']    = {},
 			['replenish'] = "top",
 			['drop']      = turtle.dropDown,
@@ -116,11 +119,11 @@ local function initialize()
 		['rednet'] = true,
 	}
 	
-	config['reactor']['size'] = inventory.getSlotCount(config['reactor']['side'])
+	config['reactor']['size'] = inventory.getSlotCount(config['reactor']['sensor'])
 
 	io.write("Building reactor pattern... ")
 	for slotNr = 1, config['reactor']['size'] do
-		local reactorSlot = inventory.getItem(slotNr, config['reactor']['side'])
+		local reactorSlot = inventory.getItem(slotNr, config['reactor']['sensor'])
 		if reactorSlot then
 			if reactorSlot['RawName'] == config['refill']['name'] then
 				table.insert(config['refill']['blocks'], slotNr)
@@ -199,10 +202,11 @@ local function placeFuelRod(slotNr)
 		for i = 1, 8 do
 			if turtle.getItemCount(i) > 0 then
 				turtle.select(i)
-				if inventory.drop(slotNr, 1, config['reactor']['side']) then
+				if inventory.drop(slotNr, 1, config['reactor']['sensor']) then
 					return true
 				end
 				-- blacklist
+				term.clearLine(1)
 				print("Blacklist Slot"..slotNr)
 				for k, s in ipairs(config.refill.blocks) do
 					if s == slotNr then
@@ -237,7 +241,7 @@ local function loopRefill()
 			end
 			if replenishSlot == nil then
 				turtle.select(turtleSlot)
-				inventory.suck(slotNr, 1, config['reactor']['side'])
+				inventory.suck(slotNr, 1, config['reactor']['sensor'])
 
 				if placeFuelRod(slotNr) then
 					config['reactor']['replaced']['cells'] = config['reactor']['replaced']['cells'] + 1
@@ -261,7 +265,7 @@ local function loopRefill()
 		end
 		
 		turtle.select(1)
-		sleep(1)
+		sleep(5)
 	end
 	
 	return true
@@ -279,7 +283,7 @@ local function processKeyEvent(key)
 	
 	elseif key == "r" then
 		config['gui']['refresh'] = true
-	
+
 	end
 	
 	return true
@@ -328,7 +332,16 @@ local function loopMenu()
 		term.setCursorPos(1,1)
 		
 		term.clearLine(1)
+		print(string.format("Reactor Refiller               (ID %03d)", os.getComputerID()))
+
+		term.clearLine(1)
+		print("")
+		
+		term.clearLine(1)
 		print(string.format("Fuel Rods Replaced: %5s", config['reactor']['replaced']['cells']))
+
+		term.clearLine(1)
+		print("")
 
 		drawFuelRodState()
 

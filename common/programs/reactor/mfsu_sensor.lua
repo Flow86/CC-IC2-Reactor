@@ -129,11 +129,14 @@ local function loopStatus()
 			end
 		end
 
-		local chargedifference = (energySunken - lastEnergySunken)
-		local dischargedifference = (energyEmitted - lastEnergyEmitted)
+		--local chargedifference = (energySunken - lastEnergySunken)
+		--local dischargedifference = (energyEmitted - lastEnergyEmitted)
 
-		mfsu.chargeRate = (chargedifference / timedifference) / 100
-		mfsu.dischargeRate = (dischargedifference / timedifference) / 100
+		--mfsu.chargeRate = (chargedifference / timedifference) / 100
+		--mfsu.dischargeRate = (dischargedifference / timedifference) / 100
+		
+		mfsu.chargeRate = energySunken
+		mfsu.dischargeRate = energyEmitted
 
 		lastEnergySunken = energySunken
 		lastEnergyEmitted = energyEmitted
