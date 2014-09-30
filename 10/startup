@@ -1,0 +1,6 @@
+while(true) do
+	if not shell.run("common/programs/reactor/massfabricator.lua") then
+		break
+	end
+	sleep(5)
+end

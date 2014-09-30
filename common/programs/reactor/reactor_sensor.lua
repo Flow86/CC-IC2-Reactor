@@ -47,6 +47,15 @@ local settings_file = string.format("reactor_%03d.properties", os.getComputerID(
 -------------------------------------------------------------------------------
 --
 -------------------------------------------------------------------------------
+local function write_settings(t)
+	file = fs.open(settings_file, "w")
+	file.write(t)
+	file.close()
+end
+
+-------------------------------------------------------------------------------
+--
+-------------------------------------------------------------------------------
 local function start()
 	if redstone.getInput(config['lever']['side']) == false then
 		term.clearLine(1)
@@ -66,15 +75,6 @@ local function start()
 		print("Starting Reactor...")
 		redstone.setOutput(config['reactor']['side'], true)
 	end
-end
-
--------------------------------------------------------------------------------
---
--------------------------------------------------------------------------------
-local function write_settings(t)
-	file = fs.open(settings_file, "w")
-	file.write(t)
-	file.close()
 end
 
 -------------------------------------------------------------------------------
@@ -252,6 +252,7 @@ end
 -------------------------------------------------------------------------------
 local function loopEvents()
 	while true do
+		--sleep(0.01)
 		local event, param, message = os.pullEvent()
 		
 		if event == "char" then
@@ -265,7 +266,7 @@ local function loopEvents()
 				if msg.cmd == "announce" or msg.cmd == "heartbeat" then
 					rednetutils.sendCommand("info", config['reactor'])
 					
-				elseif msg.cmd == "control" and config['rednet'] == true then
+				elseif msg.cmd == "control_reactor" and config['rednet'] == true then
 					if msg.data == "ON" or msg.data == "OFF" then
 						config['reactor']['command'] = msg.data
 						write_settings(config.reactor.command)
@@ -292,6 +293,7 @@ end
 local function loopRedstone()
 	print("Starting redstone detector...")
 	while true do
+		--sleep(0.01)
 		local event = os.pullEvent("redstone")
 		local changed = {}
 		

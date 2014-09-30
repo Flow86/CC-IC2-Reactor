@@ -52,7 +52,7 @@ local config = {}
 local function initialize()
 	-- todo: read basic config from file?
 
-	rednetutils.register("mfsu_sensor", { "reactor_control" })
+	rednetutils.register("mfsu_sensor", { "reactor_control", "massfabricator" })
 
 	config = {
 		['mfsu'] = {
@@ -174,6 +174,7 @@ end
 -------------------------------------------------------------------------------
 local function loopEvents()
 	while true do
+		--sleep(0.01)
 		local event, param, message = os.pullEvent()
 		
 		if event == "char" then
@@ -212,35 +213,35 @@ local function loopMenu()
 		end
 		term.setCursorPos(1,1)
 		
-		term.clearLine()
+		term.clearLine(1)
 		print(string.format("Reactor MFSU Sensorsystem      (ID %03d)", os.getComputerID()))
-		term.clearLine()
+		term.clearLine(1)
 		print("")
 		
-		term.clearLine()
+		term.clearLine(1)
 		print(string.format("MFSU Overall:   %d", #config.mfsu.blocks))
-		term.clearLine()
+		term.clearLine(1)
 		print(string.format("  Stored:              %10d kEu", config.mfsu.stored / 1000))
-		term.clearLine()
+		term.clearLine(1)
 		print(string.format("  Capacity:            %10d kEu", config.mfsu.capacity / 1000))
-		term.clearLine()
+		term.clearLine(1)
 		print(string.format("  Percent:             %10d %% ", (config.mfsu.stored / config.mfsu.capacity) * 100.0))
-		term.clearLine()
+		term.clearLine(1)
 		print("")
 
-		term.clearLine()
+		term.clearLine(1)
 		print(string.format("  Charge:              %10d Eu/t", config.mfsu.chargeRate))
-		term.clearLine()
+		term.clearLine(1)
 		print(string.format("  Discharge:           %10d Eu/t", config.mfsu.dischargeRate))
-		term.clearLine()
+		term.clearLine(1)
 		print("")
 		
-		term.clearLine()
+		term.clearLine(1)
 		print("")
-		term.clearLine()
-		print("Q to exit")
+		term.clearLine(1)
+		print("Q to exit, R to redraw")
 
-		sleep(1)
+		sleep(2)
 	end
 end
 

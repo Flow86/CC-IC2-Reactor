@@ -45,7 +45,7 @@ end
 --
 -------------------------------------------------------------------------------
 local function clickedButtonReactorOn()
-	rednetutils.sendCommand("control", "ON")
+	rednetutils.sendCommand("control_reactor", "ON")
 	config.gui.refresh = true
 end
 
@@ -53,7 +53,7 @@ end
 --
 -------------------------------------------------------------------------------
 local function clickedButtonReactorOff()
-	rednetutils.sendCommand("control", "OFF")
+	rednetutils.sendCommand("control_reactor", "OFF")
 	config.gui.refresh = true
 end
 
@@ -61,7 +61,7 @@ end
 --
 -------------------------------------------------------------------------------
 local function clickedButtonReactorReset()
-	rednetutils.sendCommand("control", "RESET")
+	rednetutils.sendCommand("control_reactor", "RESET")
 	config.gui.refresh = true
 end
 
@@ -69,7 +69,7 @@ end
 --
 -------------------------------------------------------------------------------
 local function clickedButtonReactorEmergency()
-	rednetutils.sendCommand("control", "EMERGENCY")
+	rednetutils.sendCommand("control_reactor", "EMERGENCY")
 	config.gui.refresh = true
 end
 
@@ -79,7 +79,7 @@ end
 local function initialize()
 	-- todo: read basic config from file?
 
-	rednetutils.register("reactor_control", { "mfsu_sensor", "reactor_sensor", "reactor_refiller", "lapislazuli_creator" })
+	rednetutils.register("reactor_control", { "mfsu_sensor", "reactor_sensor", "reactor_refiller", "massfabricator" })
 
 	config = {
 		['gui'] = {
@@ -100,7 +100,7 @@ local function initialize()
 			['dischargeRate'] = 0,
 			['percent'] = 0,
 			['minpercent'] = 5,  -- start limit
-			['maxpercent'] = 98, -- shutdown limit
+			['maxpercent'] = 85, -- shutdown limit
 			
 			['sensors'] = {}, -- listener list (computer ids)
 		},
@@ -391,6 +391,7 @@ end
 local function loopEvents()
 	print("Event loop starting ...")
 	while true do
+		--sleep(0.01)
 		local event, param, message, p3, p4, p5 = os.pullEventRaw()
 		
 		if event == "char" then
@@ -457,47 +458,47 @@ local function loopMenu()
 		end
 		term.setCursorPos(1,1)
 		
-		term.clearLine()
+		term.clearLine(1)
 		print(string.format("Reactor Control                (ID %03d)", os.getComputerID()))
-		term.clearLine()
+		term.clearLine(1)
 		print("")
 
-		term.clearLine()
+		term.clearLine(1)
 		print("Reactor Mode:                     "..config.mode)
-		term.clearLine()
+		term.clearLine(1)
 		print("")
 
-		term.clearLine()
+		term.clearLine(1)
 		print(string.format("Energy Storage:"))
-		term.clearLine()
+		term.clearLine(1)
 		print(string.format("  Stored:              %10d kEu ",  config.mfsu.stored / 1000))
-		term.clearLine()
+		term.clearLine(1)
 		print(string.format("  Capacity:            %10d kEu ",  config.mfsu.capacity / 1000))
-		term.clearLine()
+		term.clearLine(1)
 		print(string.format("  Percent:             %10d %%   ", config.mfsu.percent))
-		term.clearLine()
+		term.clearLine(1)
 		print("")
 		
-		term.clearLine()
+		term.clearLine(1)
 		print(string.format("  Charge:              %10d Eu/t",  config.mfsu.chargeRate))
-		term.clearLine()
+		term.clearLine(1)
 		print(string.format("  Discharge:           %10d Eu/t",  config.mfsu.dischargeRate))
-		term.clearLine()
+		term.clearLine(1)
 		print("")
 		
-		term.clearLine()
+		term.clearLine(1)
 		io.write("  Listener: ")
 		for _,i in pairs(rednetutils.getListeners()) do
 			io.write(i.." ("..rednetutils.getTypeOfTarget(i)..") ")
 		end
 		print("")
 		
-		term.clearLine()
+		term.clearLine(1)
 		print("")
-		term.clearLine()
+		term.clearLine(1)
 		print("Q to exit")
 
-		sleep(1)
+		sleep(2)
 	end
 end
 

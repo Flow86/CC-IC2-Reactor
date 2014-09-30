@@ -1,5 +1,5 @@
 while(true) do
-	if not shell.run("common/programs/reactor/reactor_tempsensor.lua") then
+	if not shell.run("common/programs/reactor/reactor_sensor.lua") then
 		break
 	end
 	sleep(5)

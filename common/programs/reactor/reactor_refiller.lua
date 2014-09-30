@@ -121,6 +121,11 @@ local function initialize()
 	
 	config['reactor']['size'] = inventory.getSlotCount(config['reactor']['sensor'])
 
+	-- fix for 4 "coolant" slots not reachable
+	if config['reactor']['size'] == 58 then
+		config['reactor']['size'] = 54
+	end
+
 	io.write("Building reactor pattern... ")
 	for slotNr = 1, config['reactor']['size'] do
 		local reactorSlot = inventory.getItem(slotNr, config['reactor']['sensor'])
@@ -218,6 +223,7 @@ local function placeFuelRod(slotNr)
 			end
 		end
 		replenishFuelRod(1)
+		--sleep(0.01)
 	end
 	return nil -- never reached
 end
@@ -294,6 +300,8 @@ end
 -------------------------------------------------------------------------------
 local function loopEvents()
 	while true do
+		--sleep(0.01)
+
 		local event, param, message = os.pullEvent()
 		
 		if event == "char" then
@@ -324,7 +332,7 @@ local function loopMenu()
 
 	rednetutils.sendCommand("announce")
 	while true do
-		sleep(1)
+
 		if config['gui']['refresh'] == true then
 			config['gui']['refresh'] = false
 			term.clear()
@@ -349,6 +357,8 @@ local function loopMenu()
 		print("Q to exit, R to redraw")
 		
 		rednetutils.sendCommand("info", config['reactor'])
+
+		sleep(1)
 	end
 	
 	return true

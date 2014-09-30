@@ -20,9 +20,16 @@ for _,side in pairs({ "top", "bottom", "left", "right", "front", "back" }) do
 	if peripheral.isPresent(side) and peripheral.getType(side) == "sensor" then
 		prox = peripheral.wrap(side)
 		
+		print("Found Sensor peripheral at side \""..side.."\": ")
 		filehandle.writeLine("Found Sensor peripheral at side \""..side.."\": ")
+
 		filehandle.writeLine("Available Methods: "..tableutils.pretty_print(peripheral.getMethods(side), "\n                   "))
-		filehandle.writeLine("Available Methods: "..tableutils.pretty_print(prox.getSensorMethods(), "\n                   "))
+		filehandle.flush()
+		print("Got Available Methods")
+		
+		-- filehandle.writeLine("Available Sensor Methods: "..tableutils.pretty_print(prox.getSensorMethods(), "\n                   "))
+		-- print("Got Available Sensor-Methods")
+		-- filehandle.flush()
 		
 		-- seems to block
 		-- if prox.getSensorName ~= nil then
@@ -31,14 +38,18 @@ for _,side in pairs({ "top", "bottom", "left", "right", "front", "back" }) do
 		
 		if prox.getTargets() ~= nil then
 			filehandle.writeLine("Available Targets: "..tableutils.pretty_print(prox.getTargets(), "\n                   "))
+			print("Got Available Targets")
 			filehandle.writeLine("")
+			filehandle.flush()
 			if prox.getTargetDetails ~= nil then
 				filehandle.writeLine("Target Info: ")
 				for block,info in pairs(prox.getTargets()) do
 					filehandle.writeLine("  ['"..block.."']:")
 					filehandle.writeLine("    "..tableutils.pretty_print(prox.getTargetDetails(block), "\n    "))
+					filehandle.flush()
 				end
 			end
+			print("Got Target-Details")
 		end
 	end
 end
